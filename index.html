@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>WiFi Auditor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --card: #161d2e;
+    --border: #1e2d45;
+    --accent: #00e5ff;
+    --accent-dim: #00e5ff18;
+    --green: #00ff87;
+    --green-dim: #00ff8718;
+    --orange: #ff9500;
+    --red: #ff3b5c;
+    --yellow: #ffd60a;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --dim: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    display: flex; flex-direction: column;
+    max-width: 430px; margin: 0 auto;
+    height: 100%; overflow: hidden;
+  }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Header */
+  #header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 18px 8px;
+    display: flex; align-items: center; gap: 10;
+    flex-shrink: 0; z-index: 100;
+  }
+  #header-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #0066ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; box-shadow: 0 0 14px #00e5ff44; flex-shrink: 0;
+  }
+  #header h1 { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; letter-spacing: 1px; color: var(--text); }
+  #header p { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; margin-top: 1px; }
+  #status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 6px var(--green);
+    margin-left: auto;
+  }
+
+  /* Tab content */
+  #content { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+  .tab-pane { display: none; padding: 16px 16px 0; }
+  .tab-pane.active { display: block; }
+
+  /* Tab bar */
+  #tabbar {
+    display: flex; background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    flex: 1; padding: 10px 0 12px; border: none;
+    background: transparent; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3;
+    border-top: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab-btn.active { border-top-color: var(--accent); }
+  .tab-btn .t-icon { font-size: 18px; }
+  .tab-btn .t-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .tab-btn.active .t-label { color: var(--accent); }
+
+  /* Cards */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+  }
+  .card-label {
+    color: var(--muted); font-size: 10px; font-family: 'Space Mono', monospace;
+    letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase;
+  }
+
+  /* Section title */
+  .sec-title { margin-bottom: 14px; }
+  .sec-title h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-family: 'Space Mono', monospace; color: var(--text); }
+  .sec-title p { color: var(--muted); font-size: 11px; margin-top: 3px; padding-left: 26px; }
+
+  /* Info rows */
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid #1e2d4520;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .lbl { color: var(--muted); font-size: 12px; }
+  .info-row .val { font-size: 13px; text-align: right; max-width: 58%; word-break: break-all; }
+  .mono { font-family: 'Space Mono', monospace; }
+
+  /* Badge */
+  .badge {
+    border-radius: 6px; padding: 2px 8px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.5px; font-family: 'Space Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  /* Progress bar */
+  .progress-track { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+  /* Run button */
+  .run-btn {
+    width: 100%; padding: 12px; border-radius: 12px;
+    border: 1px solid #00e5ff44;
+    background: linear-gradient(135deg, #00e5ff18, #00e5ff0a);
+    color: var(--accent); font-weight: 700; font-size: 13px;
+    cursor: pointer; font-family: 'Space Mono', monospace;
+    letter-spacing: 1px; transition: all 0.2s;
+    box-shadow: 0 0 12px #00e5ff18; margin-bottom: 16px;
+  }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+  /* Speed gauges */
+  .gauges { display: flex; justify-content: space-around; gap: 10; }
+  .gauge { text-align: center; flex: 1; }
+  .gauge-label { color: var(--muted); font-size: 11px; margin-top: 6px; }
+  .gauge-unit { font-size: 10px; font-family: 'Space Mono', monospace; margin-top: 2px; }
+
+  /* Port scan rows */
+  .port-row { display: flex; align-items: center; padding: 7px 0; border-bottom: 1px solid #1e2d4520; gap: 6px; }
+  .port-row:last-child { border-bottom: none; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Device rows */
+  .device-row { display: flex; align-items: center; gap: 10; padding: 10px 0; border-bottom: 1px solid #1e2d4520; }
+  .device-row:last-child { border-bottom: none; }
+
+  /* Security cards */
+  .sec-check { margin-bottom: 10px; }
+
+  /* Target selector */
+  .target-btns { display: flex; gap: 8px; margin-bottom: 6px; }
+  .target-btn {
+    flex: 1; padding: 8px; border-radius: 8px; cursor: pointer;
+    font-size: 12px; font-family: 'Space Mono', monospace;
+    transition: all 0.2s; border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+  }
+  .target-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+  .score-big {
+    font-size: 52px; font-weight: 900; font-family: 'Space Mono', monospace;
+    line-height: 1; text-align: center;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .pulsing { animation: pulse 1.2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div id="header-icon">📶</div>
+  <div>
+    <h1>WiFi Auditor</h1>
+    <p>NETWORK SECURITY TOOL</p>
+  </div>
+  <div id="status-dot"></div>
+</div>
+
+<!-- Content -->
+<div id="content">
+
+  <!-- INFO TAB -->
+  <div class="tab-pane active" id="pane-info">
+    <div class="sec-title">
+      <h2><span>🌐</span> Información de Red</h2>
+      <p>Datos de tu conexión actual</p>
+    </div>
+    <div class="card" id="info-ip">
+      <div class="card-label">Identidad IP</div>
+      <div class="info-row"><span class="lbl">IP Pública</span><span class="val mono" id="i-pubip" style="color:var(--accent)">—</span></div>
+      <div class="info-row"><span class="lbl">IP Local</span><span class="val mono" id="i-localip" style="color:var(--green)">—</span></div>
+      <div class="info-row"><span class="lbl">Subred</span><span class="val mono" id="i-subnet">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Proveedor</div>
+      <div class="info-row"><span class="lbl">ISP</span><span class="val" id="i-isp">—</span></div>
+      <div class="info-row"><span class="lbl">ASN</span><span class="val mono" id="i-asn">—</span></div>
+      <div class="info-row"><span class="lbl">País</span><span class="val" id="i-country">—</span></div>
+      <div class="info-row"><span class="lbl">Ciudad</span><span class="val" id="i-city">—</span></div>
+      <div class="info-row"><span class="lbl">Zona horaria</span><span class="val" id="i-tz">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Protocolo</div>
+      <div class="info-row"><span class="lbl">HTTP Version</span><span class="val mono" id="i-http">—</span></div>
+      <div class="info-row"><span class="lbl">TLS</span><span class="val mono" id="i-tls">—</span></div>
+      <div class="info-row"><span class="lbl">Tipo conexión</span><span class="val" id="i-type">—</span></div>
+      <div class="info-row"><span class="lbl">Datacenter CF</span><span class="val mono" id="i-colo">—</span></div>
+    </div>
+    <button class="run-btn" id="btn-info" onclick="runInfo()">▶ ACTUALIZAR</button>
+  </div>
+
+  <!-- SPEED TAB -->
+  <div class="tab-pane" id="pane-speed">
+    <div class="sec-title">
+      <h2><span>⚡</span> Speed Test</h2>
+      <p>Latencia, descarga y subida</p>
+    </div>
+    <div class="card">
+      <div class="gauges">
+        <div class="gauge">
+          <svg width="88" height="88" id="svg-dl">
+            <circle cx="44" cy="44" r="36" fill="none" stroke="#1e2d45" stroke-width="6"/>
+            <circle cx="44" cy="44" r="36" fill="none" stroke="#00e5ff" stroke-width="6"
+              stroke-dasharray="0 226" stroke-linecap="round"
+              transform="rotate(-90 44 44)" id="arc-dl"
+              style="filter:drop-shadow(0 0 6px #00e5ff); transition: stroke-dasharray 0.8s ease"/>
+            <text x="44" y="49" text-anchor="middle" fill="#e2e8f0" font-size="13"
+              font-family="Space Mono, monospace" font-weight="700" id="txt-dl">—</text>
+          </svg>
+          <div class="gauge-label">Descarga</div>
+          <div class="gauge-unit" style="color:var(--accent)">Mbps</div>
+        </div>
+        <div class="gauge">
+          <svg width="88" height="88">
+            <circle cx="44" cy="44" r="36" fill="none" stroke="#1e2d45" stroke-width="6"/>
+            <circle cx="44" cy="44" r="36" fill="none" stroke="#00ff87" stroke-width="6"
+              stroke-dasharray="0 226" stroke-linecap="round"
+              transform="rotate(-90 44 44)" id="arc-ul"
+              style="filter:drop-shadow(0 0 6px #00ff87); transition: stroke-dasharray 0.8s ease"/>
+            <text x="44" y="49" text-anchor="middle" fill="#e2e8f0" font-size="13"
+              font-family="Space Mono, monospace" font-weight="700" id="txt-ul">—</text>
+          </svg>
+          <div class="gauge-label">Subida</div>
+          <div class="gauge-unit" style="color:var(--green)">Mbps</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="ping-card" style="display:none">
+      <div class="card-label">Latencia</div>
+      <div class="info-row"><span class="lbl">Promedio</span><span class="val mono" id="p-avg">—</span></div>
+      <div class="info-row"><span class="lbl">Mínimo</span><span class="val mono" id="p-min">—</span></div>
+      <div class="info-row"><span class="lbl">Máximo</span><span class="val mono" id="p-max">—</span></div>
+      <div class="info-row"><span class="lbl">Jitter</span><span class="val mono" id="p-jitter">—</span></div>
+    </div>
+    <div id="speed-status" style="text-align:center;color:var(--muted);font-family:monospace;font-size:12px;padding:8px 0;min-height:28px"></div>
+    <button class="run-btn" id="btn-speed" onclick="runSpeed()">▶ INICIAR TEST</button>
+  </div>
+
+  <!-- PORTS TAB -->
+  <div class="tab-pane" id="pane-scan">
+    <div class="sec-title">
+      <h2><span>🔍</span> Escáner de Puertos</h2>
+      <p>Puertos comunes del router/dispositivo</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Objetivo</div>
+      <div class="target-btns">
+        <button class="target-btn active" id="tgt-router" onclick="setTarget('router')">🖥 Router (.1)</button>
+        <button class="target-btn" id="tgt-local" onclick="setTarget('local')">📱 Este dispositivo</button>
+      </div>
+      <div style="color:var(--muted);font-size:11px;font-family:monospace;margin-top:4px" id="scan-target-label"></div>
+    </div>
+    <div class="card" id="scan-progress-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="color:var(--muted);font-size:12px">Progreso</span>
+        <span style="color:var(--accent);font-size:12px;font-family:monospace" id="scan-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="scan-bar" style="width:0%;background:linear-gradient(90deg,#00e5ff88,#00e5ff)"></div></div>
+    </div>
+    <div class="card" id="ports-results" style="display:none">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span class="card-label" style="margin:0">Resultados</span>
+        <span class="badge" id="open-badge">0 ABIERTOS</span>
+      </div>
+      <div id="ports-list"></div>
+    </div>
+    <button class="run-btn" id="btn-scan" onclick="runScan()">▶ ESCANEAR PUERTOS</button>
+  </div>
+
+  <!-- DEVICES TAB -->
+  <div class="tab-pane" id="pane-devices">
+    <div class="sec-title">
+      <h2><span>📡</span> Descubrimiento de Red</h2>
+      <p>Dispositivos activos en la subred</p>
+    </div>
+    <div class="card" id="dev-info" style="display:none">
+      <div class="info-row"><span class="lbl">Subred escaneada</span><span class="val mono" id="dev-subnet">—</span></div>
+      <div class="info-row"><span class="lbl">Dispositivos encontrados</span><span class="val mono" id="dev-count" style="color:var(--green)">0</span></div>
+    </div>
+    <div class="card" id="dev-progress-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="color:var(--muted);font-size:12px">Escaneando red…</span>
+        <span style="color:var(--accent);font-size:12px;font-family:monospace" id="dev-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="dev-bar" style="width:0%;background:linear-gradient(90deg,#00ff8788,#00ff87)"></div></div>
+    </div>
+    <div class="card" id="devices-list-card" style="display:none">
+      <div id="devices-list"></div>
+    </div>
+    <button class="run-btn" id="btn-devices" onclick="runDevices()">▶ DESCUBRIR DISPOSITIVOS</button>
+  </div>
+
+  <!-- SECURITY TAB -->
+  <div class="tab-pane" id="pane-security">
+    <div class="sec-title">
+      <h2><span>🔒</span> Análisis de Seguridad</h2>
+      <p>Comprobaciones de privacidad y cifrado</p>
+    </div>
+    <div id="sec-score-card" style="display:none">
+      <div class="card" style="margin-bottom:14px">
+        <div class="score-big" id="sec-score">—</div>
+        <div style="color:var(--muted);font-size:12px;text-align:center;margin-top:6px" id="sec-verdict"></div>
+        <div class="progress-track" style="margin-top:10px"><div class="progress-fill" id="sec-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="sec-checks"></div>
+    <div id="sec-loading" style="text-align:center;color:var(--muted);padding:24px;display:none">🔐 Analizando seguridad…</div>
+    <button class="run-btn" id="btn-security" onclick="runSecurity()">▶ ANALIZAR SEGURIDAD</button>
+  </div>
+
+</div>
+
+<!-- Tab bar -->
+<div id="tabbar">
+  <button class="tab-btn active" onclick="showTab('info')">
+    <span class="t-icon">🌐</span><span class="t-label">Info</span>
+  </button>
+  <button class="tab-btn" onclick="showTab('speed')">
+    <span class="t-icon">⚡</span><span class="t-label">Speed</span>
+  </button>
+  <button class="tab-btn" onclick="showTab('scan')">
+    <span class="t-icon">🔍</span><span class="t-label">Puertos</span>
+  </button>
+  <button class="tab-btn" onclick="showTab('devices')">
+    <span class="t-icon">📡</span><span class="t-label">Red</span>
+  </button>
+  <button class="tab-btn" onclick="showTab('security')">
+    <span class="t-icon">🔒</span><span class="t-label">Seguridad</span>
+  </button>
+</div>
+
+<script>
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + id).classList.add('active');
+  const btns = document.querySelectorAll('.tab-btn');
+  const idx = ['info','speed','scan','devices','security'].indexOf(id);
+  btns[idx].classList.add('active');
+  document.getElementById('content').scrollTop = 0;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function setArc(id, value, max, circumference = 226) {
+  const pct = Math.min(100, (value / max) * 100);
+  const dash = (pct / 100) * circumference;
+  document.getElementById(id).setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+}
+
+function setProgress(barId, pctId, pct) {
+  document.getElementById(barId).style.width = Math.min(100, pct) + '%';
+  if (pctId) document.getElementById(pctId).textContent = Math.min(100, pct).toFixed(0) + '%';
+}
+
+function badge(text, color) {
+  return `<span class="badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${text}</span>`;
+}
+
+function statusDot(status) {
+  const color = status === 'open' ? 'var(--green)' : status === 'filtered' ? 'var(--orange)' : 'var(--muted)';
+  const shadow = status === 'open' ? `box-shadow:0 0 6px var(--green)` : '';
+  return `<div class="status-dot" style="background:${color};${shadow}"></div>`;
+}
+
+async function getLocalIP() {
+  return new Promise(res => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pc.createDataChannel('');
+      pc.createOffer().then(o => pc.setLocalDescription(o));
+      pc.onicecandidate = e => {
+        if (!e.candidate) return res(null);
+        const m = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+        if (m && !m[1].startsWith('0.')) { pc.close(); res(m[1]); }
+      };
+      setTimeout(() => res(null), 3000);
+    } catch { res(null); }
+  });
+}
+
+function getSubnet(ip) {
+  if (!ip) return null;
+  const p = ip.split('.');
+  return p.length === 4 ? p.slice(0, 3).join('.') : null;
+}
+
+// ── INFO ──────────────────────────────────────────────────────────────────
+async function runInfo() {
+  const btn = document.getElementById('btn-info');
+  btn.disabled = true; btn.textContent = '⏳ CONSULTANDO...';
+
+  try {
+    const res = await fetch('https://cloudflare.com/cdn-cgi/trace', { cache: 'no-store' });
+    const text = await res.text();
+    const lines = Object.fromEntries(text.trim().split('\n').map(l => l.split('=')));
+    document.getElementById('i-pubip').textContent = lines.ip || '—';
+    document.getElementById('i-http').textContent = lines.http || '—';
+    document.getElementById('i-http').style.color = ['h2','h3'].includes(lines.http) ? 'var(--green)' : 'var(--orange)';
+    document.getElementById('i-tls').textContent = lines.tls || '—';
+    document.getElementById('i-tls').style.color = lines.tls ? 'var(--green)' : 'var(--red)';
+    document.getElementById('i-colo').textContent = lines.colo || '—';
+  } catch {}
+
+  try {
+    const res2 = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+    const d = await res2.json();
+    document.getElementById('i-isp').textContent = d.org || '—';
+    document.getElementById('i-asn').textContent = d.asn || '—';
+    document.getElementById('i-country').textContent = d.country_name || '—';
+    document.getElementById('i-city').textContent = d.city || '—';
+    document.getElementById('i-tz').textContent = d.timezone || '—';
+  } catch {}
+
+  const localIP = await getLocalIP();
+  if (localIP) {
+    document.getElementById('i-localip').textContent = localIP;
+    const sn = getSubnet(localIP);
+    document.getElementById('i-subnet').textContent = sn ? sn + '.0/24' : '—';
+  }
+
+  const nav = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (nav) {
+    document.getElementById('i-type').textContent = (nav.effectiveType || '').toUpperCase() || '—';
+  }
+
+  btn.disabled = false; btn.textContent = '▶ ACTUALIZAR';
+}
+runInfo();
+
+// ── SPEED ─────────────────────────────────────────────────────────────────
+async function runSpeed() {
+  const btn = document.getElementById('btn-speed');
+  btn.disabled = true; btn.textContent = '⏳ MIDIENDO...';
+  const status = document.getElementById('speed-status');
+
+  // Reset
+  document.getElementById('txt-dl').textContent = '—';
+  document.getElementById('txt-ul').textContent = '—';
+  setArc('arc-dl', 0, 200);
+  setArc('arc-ul', 0, 100);
+  document.getElementById('ping-card').style.display = 'none';
+
+  // Ping
+  status.textContent = '📡 Midiendo latencia…'; status.classList.add('pulsing');
+  const pingSamples = [];
+  for (let i = 0; i < 5; i++) {
+    const t0 = performance.now();
+    try {
+      await fetch('https://www.cloudflare.com/cdn-cgi/trace?_=' + Math.random(), { cache: 'no-store', mode: 'no-cors' });
+      pingSamples.push(performance.now() - t0);
+    } catch {}
+    await sleep(200);
+  }
+  if (pingSamples.length) {
+    const avg = pingSamples.reduce((a,b)=>a+b,0)/pingSamples.length;
+    const min = Math.min(...pingSamples), max = Math.max(...pingSamples);
+    const pingCard = document.getElementById('ping-card');
+    pingCard.style.display = 'block';
+    document.getElementById('p-avg').textContent = avg.toFixed(1) + ' ms';
+    document.getElementById('p-min').textContent = min.toFixed(1) + ' ms';
+    document.getElementById('p-max').textContent = max.toFixed(1) + ' ms';
+    const jitter = max - min;
+    document.getElementById('p-jitter').textContent = jitter.toFixed(1) + ' ms';
+    document.getElementById('p-avg').style.color = avg < 30 ? 'var(--green)' : avg < 80 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById('p-jitter').style.color = jitter < 10 ? 'var(--green)' : 'var(--orange)';
+  }
+
+  // Download
+  status.textContent = '⬇ Midiendo descarga… (10MB)';
+  try {
+    const t0 = performance.now();
+    const res = await fetch('https://speed.cloudflare.com/__down?bytes=10000000&_=' + Date.now(), { cache: 'no-store' });
+    const buf = await res.arrayBuffer();
+    const elapsed = (performance.now() - t0) / 1000;
+    const mbps = (buf.byteLength * 8 / elapsed / 1e6).toFixed(2);
+    document.getElementById('txt-dl').textContent = mbps;
+    setArc('arc-dl', parseFloat(mbps), 200);
+  } catch {}
+
+  // Upload
+  status.textContent = '⬆ Midiendo subida… (2MB)';
+  try {
+    const size = 2 * 1024 * 1024;
+    const blob = new Blob([new Uint8Array(size).fill(65)]);
+    const t0 = performance.now();
+    await fetch('https://speed.cloudflare.com/__up?_=' + Date.now(), { method: 'POST', body: blob, cache: 'no-store' });
+    const elapsed = (performance.now() - t0) / 1000;
+    const mbps = (size * 8 / elapsed / 1e6).toFixed(2);
+    document.getElementById('txt-ul').textContent = mbps;
+    setArc('arc-ul', parseFloat(mbps), 100);
+  } catch {}
+
+  status.textContent = '✅ Test completado'; status.classList.remove('pulsing');
+  btn.disabled = false; btn.textContent = '▶ REPETIR TEST';
+}
+
+// ── PORTS ─────────────────────────────────────────────────────────────────
+const PORTS = [
+  {port:21,name:'FTP'},{port:22,name:'SSH'},{port:23,name:'Telnet'},
+  {port:25,name:'SMTP'},{port:53,name:'DNS'},{port:80,name:'HTTP'},
+  {port:110,name:'POP3'},{port:143,name:'IMAP'},{port:443,name:'HTTPS'},
+  {port:445,name:'SMB'},{port:3306,name:'MySQL'},{port:3389,name:'RDP'},
+  {port:5900,name:'VNC'},{port:8080,name:'HTTP-Alt'},{port:8443,name:'HTTPS-Alt'},
+];
+
+let scanTarget = 'router';
+function setTarget(t) {
+  scanTarget = t;
+  document.getElementById('tgt-router').classList.toggle('active', t === 'router');
+  document.getElementById('tgt-local').classList.toggle('active', t === 'local');
+}
+
+async function scanPort(host, port, timeout = 1400) {
+  const t0 = performance.now();
+  try {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), timeout);
+    await fetch(`http://${host}:${port}`, { signal: ctrl.signal, mode: 'no-cors', cache: 'no-store' });
+    clearTimeout(id);
+    return { status: 'open', latency: (performance.now() - t0).toFixed(0) };
+  } catch(e) {
+    const ms = performance.now() - t0;
+    if (e.name === 'AbortError') return { status: 'filtered', latency: null };
+    if (ms < timeout * 0.9) return { status: 'open', latency: ms.toFixed(0) };
+    return { status: 'closed', latency: null };
+  }
+}
+
+async function runScan() {
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true; btn.textContent = '⏳ ESCANEANDO...';
+
+  document.getElementById('scan-progress-card').style.display = 'block';
+  document.getElementById('ports-results').style.display = 'none';
+  document.getElementById('ports-list').innerHTML = '';
+  setProgress('scan-bar', 'scan-pct', 0);
+
+  const localIP = await getLocalIP();
+  const subnet = getSubnet(localIP);
+  const host = scanTarget === 'router' ? (subnet ? subnet + '.1' : '192.168.1.1') : (localIP || '127.0.0.1');
+  document.getElementById('scan-target-label').textContent = '→ Objetivo: ' + host;
+
+  const results = [];
+  for (let i = 0; i < PORTS.length; i++) {
+    const p = PORTS[i];
+    const r = await scanPort(host, p.port);
+    results.push({ ...p, ...r });
+    setProgress('scan-bar', 'scan-pct', ((i+1)/PORTS.length)*100);
+  }
+
+  const openCount = results.filter(r => r.status === 'open').length;
+  const ob = document.getElementById('open-badge');
+  ob.textContent = openCount + ' ABIERTOS';
+  ob.style.background = (openCount > 0 ? '#ff950022' : '#00ff8722');
+  ob.style.color = openCount > 0 ? 'var(--orange)' : 'var(--green)';
+  ob.style.border = `1px solid ${openCount > 0 ? '#ff950044' : '#00ff8744'}`;
+
+  const list = document.getElementById('ports-list');
+  list.innerHTML = results.map(r => `
+    <div class="port-row">
+      ${statusDot(r.status)}
+      <span class="mono" style="color:var(--text);font-size:13px;min-width:44px">${r.port}</span>
+      <span style="color:var(--muted);font-size:12px;flex:1">${r.name}</span>
+      ${r.status === 'open' ? badge('OPEN','#00ff87') : r.status === 'filtered' ? badge('FILT','#ff9500') : ''}
+      ${r.latency ? `<span style="color:var(--muted);font-size:10px;font-family:monospace;margin-left:4px">${r.latency}ms</span>` : ''}
+    </div>
+  `).join('');
+
+  document.getElementById('ports-results').style.display = 'block';
+  document.getElementById('scan-progress-card').style.display = 'none';
+  btn.disabled = false; btn.textContent = '▶ ESCANEAR DE NUEVO';
+}
+
+// ── DEVICES ───────────────────────────────────────────────────────────────
+async function probeDevice(ip) {
+  const t0 = performance.now();
+  try {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), 800);
+    await fetch(`http://${ip}`, { signal: ctrl.signal, mode: 'no-cors', cache: 'no-store' });
+    clearTimeout(id);
+    return { ip, latency: (performance.now()-t0).toFixed(0) };
+  } catch(e) {
+    const ms = performance.now() - t0;
+    if (e.name !== 'AbortError' && ms < 750) return { ip, latency: ms.toFixed(0) };
+    return null;
+  }
+}
+
+function guessDevice(ip) {
+  const last = parseInt(ip.split('.').pop());
+  if (last === 1) return { label: 'Router/Gateway', icon: '🖥' };
+  if (last < 10) return { label: 'Infraestructura', icon: '📡' };
+  return { label: 'Dispositivo', icon: '📱' };
+}
+
+async function runDevices() {
+  const btn = document.getElementById('btn-devices');
+  btn.disabled = true; btn.textContent = '⏳ ESCANEANDO RED...';
+
+  document.getElementById('dev-info').style.display = 'block';
+  document.getElementById('dev-progress-card').style.display = 'block';
+  document.getElementById('devices-list-card').style.display = 'none';
+  document.getElementById('devices-list').innerHTML = '';
+  document.getElementById('dev-count').textContent = '0';
+  setProgress('dev-bar', 'dev-pct', 0);
+
+  const localIP = await getLocalIP();
+  const base = getSubnet(localIP);
+  if (!base) { btn.disabled = false; btn.textContent = '▶ DESCUBRIR DISPOSITIVOS'; return; }
+
+  document.getElementById('dev-subnet').textContent = base + '.0/24';
+
+  const range = Array.from({length: 30}, (_, i) => `${base}.${i+1}`);
+  const found = [];
+  const list = document.getElementById('devices-list');
+  const BATCH = 8;
+
+  for (let i = 0; i < range.length; i += BATCH) {
+    const batch = range.slice(i, i + BATCH);
+    const res = await Promise.all(batch.map(ip => probeDevice(ip)));
+    res.filter(Boolean).forEach(d => {
+      found.push(d);
+      const g = guessDevice(d.ip);
+      list.insertAdjacentHTML('beforeend', `
+        <div class="device-row">
+          <span style="font-size:20px">${g.icon}</span>
+          <div style="flex:1">
+            <div class="mono" style="color:var(--accent);font-size:14px">${d.ip}</div>
+            <div style="color:var(--muted);font-size:11px">${g.label}</div>
+          </div>
+          <div style="text-align:right">
+            ${badge('VIVO','#00ff87')}
+            ${d.latency ? `<div style="color:var(--muted);font-size:10px;font-family:monospace;margin-top:2px">${d.latency}ms</div>` : ''}
+          </div>
+        </div>
+      `);
+      document.getElementById('dev-count').textContent = found.length;
+    });
+    setProgress('dev-bar', 'dev-pct', ((i+BATCH)/range.length)*100);
+    document.getElementById('devices-list-card').style.display = found.length ? 'block' : 'none';
+  }
+
+  document.getElementById('dev-progress-card').style.display = 'none';
+  btn.disabled = false; btn.textContent = '▶ ESCANEAR DE NUEVO';
+}
+
+// ── SECURITY ──────────────────────────────────────────────────────────────
+async function runSecurity() {
+  const btn = document.getElementById('btn-security');
+  btn.disabled = true; btn.textContent = '⏳ ANALIZANDO...';
+  document.getElementById('sec-loading').style.display = 'block';
+  document.getElementById('sec-score-card').style.display = 'none';
+  document.getElementById('sec-checks').innerHTML = '';
+
+  // DNS Leak
+  const dnsLeaks = [];
+  for (const url of [
+    'https://1.1.1.1/dns-query?name=whoami.cloudflare&type=TXT',
+    'https://dns.google/resolve?name=o-o.myaddr.l.google.com&type=TXT',
+  ]) {
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/dns-json' }, cache: 'no-store' });
+      const d = await res.json();
+      const ans = d?.Answer?.[0]?.data?.replace(/"/g, '');
+      if (ans) dnsLeaks.push({ server: new URL(url).hostname, ip: ans });
+    } catch {}
+  }
+
+  // IPv6
+  let ipv6 = null;
+  try {
+    const res = await fetch('https://api64.ipify.org?format=json', { cache: 'no-store' });
+    const { ip } = await res.json();
+    ipv6 = ip?.includes(':') ? ip : null;
+  } catch {}
+
+  // HTTP version
+  let httpVer = '?';
+  try {
+    const res = await fetch('https://cloudflare.com/cdn-cgi/trace', { cache: 'no-store' });
+    const text = await res.text();
+    httpVer = Object.fromEntries(text.trim().split('\n').map(l => l.split('='))).http || '?';
+  } catch {}
+
+  const nav = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
+  const checks = [
+    {
+      name: 'HTTPS activo', icon: '🔐',
+      ok: location.protocol === 'https:',
+      desc: 'La página usa cifrado TLS',
+      value: location.protocol,
+      warn: false,
+    },
+    {
+      name: 'HTTP/2 o superior', icon: '🚀',
+      ok: ['h2','h3','http/2','http/3'].includes(httpVer?.toLowerCase()),
+      desc: 'Protocolo de transporte moderno',
+      value: httpVer,
+      warn: false,
+    },
+    {
+      name: 'DNS Leak', icon: '🔍',
+      ok: dnsLeaks.length <= 1,
+      desc: `Servidores DNS: ${dnsLeaks.map(d=>d.server).join(', ') || 'no detectado'}`,
+      value: dnsLeaks.length ? dnsLeaks.map(d=>d.ip).join(' / ') : '—',
+      warn: false,
+    },
+    {
+      name: 'IPv6 expuesto', icon: '🌐',
+      ok: !ipv6,
+      desc: 'Visibilidad de dirección IPv6 exterior',
+      value: ipv6 || 'No detectado',
+      warn: true,
+    },
+    {
+      name: 'Modo ahorro de datos', icon: '📶',
+      ok: !(nav?.saveData),
+      desc: 'Header Save-Data activo',
+      value: nav?.saveData ? 'Activado' : 'No activo',
+      warn: true,
+    },
+  ];
+
+  const score = checks.filter(c => c.warn ? !c.ok : c.ok).length;
+  const scoreEl = document.getElementById('sec-score');
+  const verdictEl = document.getElementById('sec-verdict');
+  const barEl = document.getElementById('sec-bar');
+  const color = score >= 4 ? 'var(--green)' : score >= 2 ? 'var(--yellow)' : 'var(--red)';
+
+  scoreEl.textContent = `${score}/${checks.length}`;
+  scoreEl.style.color = color;
+  verdictEl.textContent = score >= 4 ? '✅ Conexión segura' : score >= 2 ? '⚠️ Mejorable' : '❌ Problemas detectados';
+  barEl.style.width = (score/checks.length*100) + '%';
+  barEl.style.background = `linear-gradient(90deg, ${color}88, ${color})`;
+
+  document.getElementById('sec-score-card').style.display = 'block';
+
+  const checksEl = document.getElementById('sec-checks');
+  checks.forEach(c => {
+    const isGood = c.warn ? !c.ok : c.ok;
+    const bc = isGood ? '#00ff87' : c.warn ? '#ff9500' : '#ff3b5c';
+    checksEl.insertAdjacentHTML('beforeend', `
+      <div class="card sec-check" style="border-color:${isGood ? '#00ff8722' : '#ff3b5c22'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1">
+            <div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:3px">
+              ${isGood ? '✅' : '⚠️'} ${c.name}
+            </div>
+            <div style="color:var(--muted);font-size:11px">${c.desc}</div>
+            <div style="font-family:monospace;font-size:11px;color:${bc};margin-top:4px">${c.value}</div>
+          </div>
+          ${badge(isGood ? 'OK' : 'RIESGO', bc)}
+        </div>
+      </div>
+    `);
+  });
+
+  document.getElementById('sec-loading').style.display = 'none';
+  btn.disabled = false; btn.textContent = '▶ REPETIR ANÁLISIS';
+}
+</script>
+</body>
+</html>
